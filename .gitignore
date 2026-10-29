@@ -23,3 +23,9 @@ test-results/
 *.p8
 *.key
 *.pem
+
+# Python release tooling
+__pycache__/
+*.pyc
+/release-assets/
+/release-notes.md

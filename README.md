@@ -69,9 +69,23 @@ All screenshots use the real Vue interface and a separate demonstration database
 | **Automate** | A JSON-capable CLI and a stdio MCP server using the same task engine as the desktop app |
 
 > [!NOTE]
-> Tasks is in early development. macOS is the current desktop target; no signed, notarized public installer is provided. Google Drive and Dropbox sync adapters are implemented, but real authorization and transfers between Macs still need verification. Shared-list collaboration, assignments and mentions are not available.
+> Tasks is in early development. macOS is the current desktop target. Public builds are ad hoc signed, but not notarized by Apple; macOS may require approval in Privacy & Security on first launch. Google Drive and Dropbox sync adapters are implemented, but real authorization and transfers between Macs still need verification. Shared-list collaboration, assignments and mentions are not available.
 
 ## Get started
+
+[**Download Tasks for macOS →**](https://github.com/DwennK/Tasks/releases/latest)
+
+One universal app for **Apple Silicon and Intel**, on macOS 12 or later. Open the DMG and drag Tasks to Applications, or install with Homebrew:
+
+```sh
+brew install --cask dwennk/tap/tasks
+```
+
+**Settings → Updates** checks GitHub Releases and lets you download, verify and install a new version when you choose. Tasks saves open work before restarting. Automatic checks can be disabled. Homebrew users can also run `brew upgrade --cask --greedy dwennk/tap/tasks`.
+
+Version 0.1.0 needs one manual installation to get the updater. See [releases, updates and signing](docs/releases.md).
+
+### Build from source
 
 You will need **macOS 12+**, **Xcode command line tools**, **stable Rust**, a **Node.js version supported by Vite 8**, and **pnpm 12.15.0**.
 
@@ -85,10 +99,10 @@ pnpm desktop
 Build a local macOS application:
 
 ```sh
-pnpm bundle
+pnpm bundle --config '{"bundle":{"createUpdaterArtifacts":false}}'
 ```
 
-The bundle is written to `target/release/bundle/macos/Tasks.app`. The current configuration uses ad hoc signing for local development. Public distribution requires your own Apple signing and notarization setup.
+The bundle is written to `target/release/bundle/macos/Tasks.app`. The current configuration uses ad hoc signing. The command above skips signed updater archives; public release builds use the separate updater signing key. Apple notarization requires an Apple Developer subscription.
 
 For browser development with a separate database:
 
@@ -139,7 +153,7 @@ Tasks works locally without a login. The default database lives at:
 
 Attachments are stored inside SQLite alongside their metadata. All three interfaces share this database; `TASKS_DB` overrides its location, and CLI/MCP also accept `--db`.
 
-- **Offline by default.** No Tasks account server or telemetry.
+- **Local task storage.** No Tasks account server or telemetry. Optional automatic update checks contact GitHub; task content is never sent.
 - **Optional personal sync.** Connect Google Drive or Dropbox after configuring a provider. OAuth tokens stay in macOS Keychain. See [cloud sync setup and limitations](docs/cloud-sync.md).
 - **Recoverable tasks.** Deleting moves a task and its subtasks to Trash. Deleting a list moves its tasks to Inbox.
 - **Conflict-aware editing.** Version checks reject stale saves, and the editor preserves the draft for an explicit retry.
@@ -190,7 +204,7 @@ PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pnpm test:ui
 
 The browser suite uses installed Google Chrome and does not download a browser. Native integrations and real cloud transfers require additional macOS checks.
 
-→ [Development and usage guide](docs/development.md) · [CLI & MCP](docs/cli-mcp.md) · [Cloud sync](docs/cloud-sync.md)
+→ [Development and usage guide](docs/development.md) · [CLI & MCP](docs/cli-mcp.md) · [Cloud sync](docs/cloud-sync.md) · [Releases & updates](docs/releases.md)
 
 Found a bug or have an idea? [Open an issue](https://github.com/DwennK/Tasks/issues). Include the steps to reproduce, your macOS version and what you expected to happen. Use demonstration data when sharing screenshots or logs.
 

@@ -9,7 +9,7 @@ Requirements: macOS 12+, Xcode command line tools, stable Rust, Node.js and pnpm
 ```sh
 pnpm install --frozen-lockfile
 pnpm desktop          # Native app with development frontend
-pnpm bundle           # Release .app in target/release/bundle/macos/Tasks.app
+pnpm bundle --config '{"bundle":{"createUpdaterArtifacts":false}}' # Local .app and DMG
 cargo build --release -p tasks-cli -p tasks-mcp
 ```
 
@@ -96,4 +96,4 @@ UI tests use the installed Google Chrome with an isolated temporary profile and 
 - `crates/tasks-mcp/`: bounded newline-delimited JSON-RPC stdio server.
 - `CONTRACT.md`: transport-neutral actions and data shape.
 
-This is a local development build. Distribution outside this Mac requires your Apple signing identity and notarization. Tasks is an independent project inspired by familiar task-manager workflows; it is not affiliated with TickTick and does not import TickTick account data.
+Public builds are available through GitHub Releases and Homebrew, with in-app updates from version 0.2.0. They are ad hoc signed, not Apple-notarized. See [release instructions](releases.md) for publishing and signing. Tasks is an independent project inspired by familiar task-manager workflows; it is not affiliated with TickTick and does not import TickTick account data.
