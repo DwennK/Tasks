@@ -6,6 +6,8 @@ Tasks is distributed through [GitHub Releases](https://github.com/DwennK/Tasks/r
 brew install --cask dwennk/tap/tasks
 ```
 
+If Homebrew asks for trust, review the [Tasks cask](https://github.com/DwennK/homebrew-tap/blob/main/Casks/tasks.rb), run `brew trust --cask dwennk/tap/tasks`, then retry the install. This grants trust only to this cask.
+
 **Current builds are ad hoc signed, not Apple-notarized.** Without an Apple Developer subscription, macOS may require its normal Privacy & Security approval on first launch. Homebrew does not remove quarantine or bypass Gatekeeper. The updater uses a separate cryptographic signing key to authenticate each update.
 
 ## In the app

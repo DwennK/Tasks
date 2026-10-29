@@ -50,7 +50,8 @@ def prepare(bundle: Path, output: Path, tag: str, notes: str):
   homepage "https://github.com/{REPOSITORY}"
 
   auto_updates true
-  depends_on macos: ">= :monterey"
+  depends_on macos: :monterey
+
   app "Tasks.app"
 end
 '''

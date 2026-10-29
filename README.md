@@ -81,6 +81,8 @@ One universal app for **Apple Silicon and Intel**, on macOS 12 or later. Open th
 brew install --cask dwennk/tap/tasks
 ```
 
+If Homebrew asks for trust, review the [Tasks cask](https://github.com/DwennK/homebrew-tap/blob/main/Casks/tasks.rb), run `brew trust --cask dwennk/tap/tasks`, then retry the install. This grants trust only to this cask.
+
 **Settings → Updates** checks GitHub Releases and lets you download, verify and install a new version when you choose. Tasks saves open work before restarting. Automatic checks can be disabled. Homebrew users can also run `brew upgrade --cask --greedy dwennk/tap/tasks`.
 
 Version 0.1.0 needs one manual installation to get the updater. See [releases, updates and signing](docs/releases.md).
