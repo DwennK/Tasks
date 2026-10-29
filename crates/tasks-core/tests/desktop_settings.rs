@@ -152,3 +152,29 @@ fn simultaneous_global_shortcut_claims_have_one_winner() {
         before + 1
     );
 }
+
+#[test]
+fn automatic_update_checks_persist_and_reject_non_boolean_values() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("settings.sqlite3");
+    let service = TaskService::open(&path).unwrap();
+    service
+        .execute(
+            "settings.set",
+            json!({"key":"automatic_update_checks","value":false}),
+        )
+        .unwrap();
+    let revision = service.execute("revision", json!({})).unwrap();
+    assert!(service
+        .execute(
+            "settings.set",
+            json!({"key":"automatic_update_checks","value":"false"})
+        )
+        .is_err());
+    assert_eq!(service.execute("revision", json!({})).unwrap(), revision);
+    let reopened = TaskService::open(&path).unwrap();
+    assert_eq!(
+        reopened.execute("settings.get", json!({})).unwrap()["automatic_update_checks"],
+        false
+    );
+}

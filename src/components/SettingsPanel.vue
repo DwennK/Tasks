@@ -35,6 +35,10 @@ import { defaultHotkeys, keyChord, type HotkeyAction } from "../lib/task-input";
 import { registerEscapeLayer } from "../lib/escape-layers";
 import TaskNavigationGlyph from "./TaskNavigationGlyph.vue";
 import CloudSyncSettings from "./CloudSyncSettings.vue";
+import UpdateSettings from "./UpdateSettings.vue";
+import { getVersion } from "@tauri-apps/api/app";
+import { isNative } from "../adapter";
+import appPackage from "../../package.json";
 
 type Section =
   | "smart"
@@ -44,6 +48,7 @@ type Section =
   | "more"
   | "hotkeys"
   | "sync"
+  | "updates"
   | "about";
 type RecordedAction = HotkeyAction | "global_quick_add" | "global_show_hide";
 const props = withDefaults(
@@ -61,7 +66,7 @@ const props = withDefaults(
     templates: () => [],
     standalone: false,
     initialSection: "smart",
-    version: "0.1.0",
+    version: appPackage.version,
   },
 );
 const emit = defineEmits<{
@@ -74,6 +79,16 @@ const emit = defineEmits<{
     name?: string,
   ];
 }>();
+const displayedVersion = ref(props.version);
+onMounted(async () => {
+  if (isNative) {
+    try {
+      displayedVersion.value = await getVersion();
+    } catch {
+      /* Keep packaged version if native metadata is unavailable. */
+    }
+  }
+});
 const panel = ref<HTMLElement>();
 const section = ref<Section>(props.initialSection);
 watch(
@@ -128,6 +143,7 @@ const sections = [
   { id: "more" as Section, name: "More", icon: PhSliders },
   { id: "sync" as Section, name: "Cloud Sync", icon: PhCloud },
   { id: "hotkeys" as Section, name: "Hotkeys", icon: PhKeyboard },
+  { id: "updates" as Section, name: "Updates", icon: PhCloud },
   { id: "about" as Section, name: "About", icon: PhInfo },
 ];
 const defaults: Record<string, unknown> = {
@@ -679,6 +695,7 @@ onBeforeUnmount(() => {
               ></label></div
           ></template>
           <CloudSyncSettings v-else-if="section === 'sync'" />
+          <UpdateSettings v-else-if="section === 'updates'" />
           <template v-else-if="section === 'notifications'"
             ><h2>Notifications</h2>
             <div class="settings-group">
@@ -1483,7 +1500,7 @@ onBeforeUnmount(() => {
             <div class="about-tasks">
               <PhCheckSquare :size="66" weight="fill" />
               <h3>Tasks</h3>
-              <p>Version {{ version }}</p>
+              <p>Version {{ displayedVersion }}</p>
             </div>
             <div class="settings-group">
               <div class="preference-row">

@@ -63,6 +63,9 @@ const TaskEditor = defineAsyncComponent(
 import TaskTreeRow from "./components/TaskTreeRow.vue";
 import PaneResizer from "./components/PaneResizer.vue";
 import TaskContextMenu from "./components/TaskContextMenu.vue";
+const UpdateNotice = defineAsyncComponent(
+  () => import("./components/UpdateNotice.vue"),
+);
 const SettingsPanel = defineAsyncComponent(
   () => import("./components/SettingsPanel.vue"),
 );
@@ -197,6 +200,7 @@ const commandQuery = ref("");
 const menu = ref<"sort" | "list" | "create" | null>(null);
 const settingsSection = ref<
   | "sync"
+  | "updates"
   | "smart"
   | "notifications"
   | "date"
@@ -738,6 +742,8 @@ let unlistenQuit: UnlistenFn | undefined,
   unlistenCommands: UnlistenFn | undefined;
 let disposed = false;
 const quitting = ref(false);
+const installingUpdate = ref(false);
+let unlistenInstalling: UnlistenFn | undefined;
 const activeQuitRound = ref<number | null>(null);
 let quitInputCleanup: (() => void) | undefined;
 let quitInputLocked = false;
@@ -775,6 +781,7 @@ async function drainNativeInput() {
 function resetQuit(reason = "") {
   quitGeneration++;
   quitting.value = false;
+  installingUpdate.value = false;
   quitInputLocked = false;
   activeQuitRound.value = null;
   quitInputCleanup?.();
@@ -788,8 +795,6 @@ async function cancelNativeQuit(reason = "Quit cancelled") {
     await invoke("cancel_quit", { reason, roundId });
   } catch (error) {
     state.error = String(error);
-  } finally {
-    if (activeQuitRound.value === roundId) resetQuit(reason);
   }
 }
 function lockQuitKeyboard(event: KeyboardEvent) {
@@ -951,6 +956,9 @@ onMounted(() => {
   document.addEventListener("keydown", lockQuitKeyboard, true);
   document.addEventListener("beforeinput", lockQuitBeforeInput, true);
   if (isNative) {
+    void listen("tasks-update-installing", () => {
+      installingUpdate.value = true;
+    }).then((u) => (disposed ? u() : (unlistenInstalling = u)));
     void listen<number>(
       "tasks-before-quit",
       (event) => void finishNativeQuit(event.payload),
@@ -970,6 +978,7 @@ onMounted(() => {
       [
         "smart",
         "sync",
+        "updates",
         "notifications",
         "date",
         "appearance",
@@ -985,6 +994,7 @@ onMounted(() => {
           [
             "smart",
             "sync",
+            "updates",
             "notifications",
             "date",
             "appearance",
@@ -1038,6 +1048,7 @@ onBeforeUnmount(() => {
   if (titlePointerTimer) clearTimeout(titlePointerTimer);
   deferredTitleBlur = undefined;
   disposed = true;
+  unlistenInstalling?.();
   unlistenQuit?.();
   unlistenDeepLink?.();
   unlistenOpenTask?.();
@@ -2178,7 +2189,10 @@ async function runCommand(id: string) {
   if (id === "quick_add") await openQuick();
   else if (id === "search") await search();
   else if (id === "settings") openSettings();
-  else if (id === "shortcuts") openSettings("hotkeys");
+  else if (id === "check_updates") {
+    openSettings("updates");
+    void invoke("check_for_updates").catch((e) => (state.error = String(e)));
+  } else if (id === "shortcuts") openSettings("hotkeys");
   else if (
     [
       "today",
@@ -3533,6 +3547,10 @@ function keyboard(event: KeyboardEvent) {
       @select="openSearchResult"
     />
   </template>
+  <UpdateNotice
+    v-if="!standaloneSettings && !standaloneReminders && !quitting"
+    @open="openSettings('updates')"
+  />
   <Teleport to="body"
     ><div
       v-if="quitting"
@@ -3542,8 +3560,16 @@ function keyboard(event: KeyboardEvent) {
       aria-label="Saving before quit"
     >
       <div>
-        <p>Saving changes…</p>
-        <button @click="cancelNativeQuit()">Cancel</button>
+        <p>
+          {{
+            installingUpdate
+              ? "Installing update. Tasks will restart…"
+              : "Saving changes…"
+          }}
+        </p>
+        <button v-if="!installingUpdate" @click="cancelNativeQuit()">
+          Cancel
+        </button>
       </div>
     </div></Teleport
   >

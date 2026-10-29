@@ -681,7 +681,7 @@ pub(super) fn set_setting(conn: &Connection, data: &Map<String, Value>) -> Resul
             ],
         ),
         "notifications" | "show_list_color" | "completion_sound" | "show_week_numbers"
-        | "show_timezone" | "show_dock_icon" => value.is_boolean(),
+        | "show_timezone" | "show_dock_icon" | "automatic_update_checks" => value.is_boolean(),
         "launch_at_login"
         | "launch_minimized"
         | "global_quick_add_shortcut"

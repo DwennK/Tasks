@@ -6,6 +6,7 @@ mod native_integrations;
 mod native_window;
 mod native_reminders;
 mod native_sync;
+mod native_updates;
 mod quit;
 
 use serde_json::Value;
@@ -31,7 +32,7 @@ async fn open_settings_window(
         .filter(|s| {
             matches!(
                 *s,
-                "smart" | "notifications" | "date" | "appearance" | "more" | "hotkeys" | "about" | "sync"
+                "smart" | "notifications" | "date" | "appearance" | "more" | "hotkeys" | "about" | "sync" | "updates"
             )
         })
         .unwrap_or("smart");
@@ -115,6 +116,7 @@ fn main() {
             }
         }))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
@@ -125,11 +127,14 @@ fn main() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(service)
         .manage(quit::QuitState::default())
+        .manage(native_updates::UpdateState::default())
         .manage(quit::Activities::default())
         .manage(native_appearance::AppearanceState::default())
         .manage(native_integrations::IntegrationState::default())
         .manage(native_sync::CloudSyncState::default())
         .invoke_handler(tauri::generate_handler![
+            native_updates::update_status, native_updates::update_set_automatic,
+            native_updates::check_for_updates, native_updates::download_update, native_updates::install_update,
             dispatch, quit::finish_quit, quit::cancel_quit, open_settings_window, close_settings_window,
             native_reminders::pending_task_reminders,
             native_reminders::resolve_task_reminder,
@@ -173,7 +178,7 @@ fn main() {
             MenuBuilder::new(app)
                 .item(&SubmenuBuilder::new(app, "Tasks")
                     .about(Some(AboutMetadata { name: Some("Tasks".into()), version: Some(env!("CARGO_PKG_VERSION").into()), ..Default::default() }))
-                    .separator().item(&settings).separator().services().separator().hide().hide_others().show_all().separator().item(&quit).build()?)
+                    .separator().item(&command("check_updates", "Check for Updates…")?).item(&settings).separator().services().separator().hide().hide_others().show_all().separator().item(&quit).build()?)
                 .item(&file_menu)
                 .item(&SubmenuBuilder::new(app, "Edit").undo().redo().separator().cut().copy().paste().select_all().build()?)
                 .item(&list_menu.build()?)
@@ -230,6 +235,7 @@ fn main() {
                 eprintln!("Could not start desktop integration updates: {error}");
             }
             native_sync::start(handle.clone(), stopping.clone());
+            native_updates::start(handle.clone(), stopping.clone());
         }
         tauri::RunEvent::ExitRequested { api, .. } => {
             if !handle
