@@ -35,6 +35,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
         with:
           toolchain: 1.94.1
+          components: clippy
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - name: Validate release version and signing key
         env:
