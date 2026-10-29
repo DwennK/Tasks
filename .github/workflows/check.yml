@@ -24,6 +24,8 @@ jobs:
           node-version: '24'
           cache: pnpm
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: 1.94.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: python3 -m unittest discover -s tests/release -v
