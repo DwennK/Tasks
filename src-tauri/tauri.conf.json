@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Tasks",
+  "version": "0.1.0",
+  "identifier": "com.dwenn.tasks",
+  "plugins": {
+    "deep-link": { "desktop": { "schemes": ["tasks"] } }
+  },
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Tasks",
+        "width": 1470,
+        "height": 923,
+        "minWidth": 760,
+        "minHeight": 500,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 7,
+          "y": 18
+        },
+        "dragDropEnabled": false,
+        "backgroundColor": "#303957",
+        "acceptFirstMouse": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob:; media-src 'self' data: blob:; font-src 'self'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Local-first tasks, lists, and reminders.",
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": "-"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ]
+  }
+}

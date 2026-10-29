@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "Local task window and native notifications only",
+  "windows": ["main", "settings", "reminders"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "notification:default",
+    "deep-link:default"
+  ]
+}

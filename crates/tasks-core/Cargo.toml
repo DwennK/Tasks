@@ -1,0 +1,23 @@
+[package]
+name = "tasks-core"
+version = "0.1.0"
+edition = "2021"
+description = "Shared transactional local-first task service"
+license = "MIT"
+
+[dependencies]
+chrono = { version = "0.4.45", features = ["serde"] }
+chrono-tz = "0.10"
+iana-time-zone = "0.1"
+base64 = "0.22"
+regex = "1"
+pulldown-cmark = { version = "0.13.5", default-features = false }
+html5ever = "0.39"
+rusqlite = { version = "0.41.0", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1.29.0", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"

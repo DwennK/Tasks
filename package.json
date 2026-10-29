@@ -1,0 +1,49 @@
+{
+  "name": "tasks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "check": "vue-tsc --noEmit",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "bundle": "tauri build",
+    "test": "cargo test --workspace",
+    "test:ui": "playwright test"
+  },
+  "dependencies": {
+    "@phosphor-icons/vue": "2.2.1",
+    "@tabler/icons-vue": "3.49.0",
+    "@tauri-apps/api": "2.12.4",
+    "@tauri-apps/plugin-deep-link": "2.6.2",
+    "@tauri-apps/plugin-notification": "2.7.0",
+    "@tiptap/extension-highlight": "3.32.0",
+    "@tiptap/extension-placeholder": "3.32.0",
+    "@tiptap/extension-task-item": "3.32.0",
+    "@tiptap/extension-task-list": "3.32.0",
+    "@tiptap/pm": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
+    "@tiptap/vue-3": "3.32.0",
+    "dompurify": "3.4.17",
+    "marked": "18.1.2",
+    "turndown": "7.2.4",
+    "vue": "3.5.44"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@tauri-apps/cli": "2.12.4",
+    "@types/node": "^24.0.0",
+    "@types/turndown": "5.0.6",
+    "@vitejs/plugin-vue": "6.0.10",
+    "prettier": "3.9.10",
+    "sharp": "0.35.5",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vue-tsc": "3.3.13"
+  }
+}

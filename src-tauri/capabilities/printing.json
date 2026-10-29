@@ -1,0 +1,6 @@
+{
+  "identifier": "printing",
+  "description": "Allow the main task editor to open the native print dialog",
+  "windows": ["main"],
+  "permissions": ["core:webview:allow-print"]
+}
