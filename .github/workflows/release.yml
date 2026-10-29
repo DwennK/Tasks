@@ -59,13 +59,15 @@ jobs:
       - name: Configure optional Apple distribution credentials
         env:
           SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           python3 - <<'PY'
           import os
-          names = {'SIGN_IDENTITY':'APPLE_SIGNING_IDENTITY','APPLE_ID':'APPLE_ID','APPLE_PASSWORD':'APPLE_PASSWORD','APPLE_TEAM_ID':'APPLE_TEAM_ID'}
+          names = {'SIGN_IDENTITY':'APPLE_SIGNING_IDENTITY','APPLE_ID':'APPLE_ID','APPLE_PASSWORD':'APPLE_PASSWORD','APPLE_TEAM_ID':'APPLE_TEAM_ID','APPLE_CERTIFICATE':'APPLE_CERTIFICATE','APPLE_CERTIFICATE_PASSWORD':'APPLE_CERTIFICATE_PASSWORD'}
           with open(os.environ['GITHUB_ENV'], 'a') as f:
               for source, target in names.items():
                   value = os.environ.get(source, '')
@@ -77,12 +79,10 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         with:
           tauriScript: pnpm tauri
           args: --target universal-apple-darwin --bundles app,dmg
-          uploadUpdaterJson: false
+          includeUpdaterJson: false
       - name: Verify bundle and prepare release assets
         run: |
           APP='target/universal-apple-darwin/release/bundle/macos/Tasks.app'
