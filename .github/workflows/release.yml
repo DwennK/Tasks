@@ -83,11 +83,20 @@ jobs:
           tauriScript: pnpm tauri
           args: --target universal-apple-darwin --bundles app,dmg
           includeUpdaterJson: false
+      - name: Retain build inputs briefly for release diagnostics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: macos-release-inputs
+          path: |
+            target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz*
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          retention-days: 1
+          if-no-files-found: error
       - name: Verify bundle and prepare release assets
         run: |
           APP='target/universal-apple-darwin/release/bundle/macos/Tasks.app'
           codesign --verify --deep --strict "$APP"
-          lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/tasks-desktop"
+          lipo "$APP/Contents/MacOS/tasks-desktop" -verify_arch arm64 x86_64
           cp docs/release-notes.md release-notes.md
           if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
             xcrun stapler validate "$APP"
