@@ -2462,7 +2462,15 @@ function keyboard(event: KeyboardEvent) {
           title="Settings · ⌘,"
           @click="openSettings()"
         >
-          <img src="/assets/profile-texture.png" alt="" />
+          <img
+            :src="
+              state.snapshot.settings.app_icon === 'rounded'
+                ? '/icons/app-rounded.png'
+                : '/icons/app-default.png'
+            "
+            alt=""
+            draggable="false"
+          />
         </button>
         <div class="rail-navigation" aria-label="Task shortcuts">
           <button
