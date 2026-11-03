@@ -66,6 +66,24 @@ sqlite3 "$HOME/Library/Application Support/com.dwenn.tasks/tasks.sqlite3" ".back
 
 Do not copy only the main SQLite file while writers are active; WAL sidecars may contain recent transactions. To restore, quit Tasks and stop CLI/MCP clients, retain a backup of the existing database and sidecars, then replace the database with the backup.
 
+## Undo task actions
+
+Press **⌘Z** outside a text field, or choose **Edit → Undo** in the macOS menu.
+Task creation, duplication, completion, deletion/restoration, scheduling, tags,
+priority and moves/reordering can be undone. Cascades and generated recurring
+occurrences are included; multi-selection actions and a drag/reorder gesture
+are grouped. Undoing a creation removes the newly created tasks and their copied
+attachments, after checking they have not been edited independently.
+
+Text fields and rich notes retain their own editing history. There is no new
+in-app control and no task-level Redo. Lists/folders, comments, attachments and
+settings are outside the task undo history. History belongs to the current
+window session (up to 50 groups); local receipts are capped at 100 mutations and
+16 MiB and are never synced. Expired receipts or changed tasks produce an error
+without partially applying an undo. The service verifies affected task content,
+relations and hierarchy in a transaction, preserves monotonic versions and
+records undo as a normal local change for activity history and synchronization.
+
 ## Notifications
 
 Enable notifications in Settings and select one or more reminders in the task’s date picker. The running desktop app checks due reminders every 15 seconds and records submitted reminders in SQLite. Closing the window keeps the app running; click the Dock icon to reopen. ⌘Q quits the app and stops its reminder scheduler. Missed reminders are checked on the next launch. macOS notification settings and Focus may suppress banners. A queued OS notification is not proof that it was seen. A separate reminder window offers Done, Dismiss and Snooze. Its pending reminders persist across restarts, and stale controls cannot change a rescheduled, deleted or completed task.

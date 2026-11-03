@@ -13,6 +13,7 @@ mod relations;
 mod reminder_actions;
 mod sync;
 mod text;
+mod undo;
 use serde_json::{json, Map, Value};
 use std::{
     collections::HashSet,
@@ -168,13 +169,13 @@ impl TaskService {
         }
         let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
         // Existing databases do not need a write lock merely to open the app.
-        if version == 9 {
+        if version == 10 {
             return Ok(());
         }
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         // Another process may have finished the migration while we waited.
         let version: i64 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-        if version > 9 {
+        if version > 10 {
             return invalid(
                 "This database was created by a newer version of Tasks. Update the application.",
             );
@@ -220,6 +221,10 @@ impl TaskService {
             sync::initialize(&tx)?;
             tx.pragma_update(None, "user_version", 9)?;
         }
+        if version < 10 {
+            tx.execute_batch(include_str!("../migrations/010_undo.sql"))?;
+            tx.pragma_update(None, "user_version", 10)?;
+        }
         tx.commit()?;
         Ok(())
     }
@@ -242,6 +247,21 @@ impl TaskService {
         let data = input
             .as_object()
             .ok_or_else(|| ServiceError::Invalid("Input must be a JSON object.".into()))?;
+        let recording = action == "undo.execute";
+        let (action, data) = if recording {
+            fields(data, &["action", "input"])?;
+            let action = required(data, "action")?;
+            if !undo::supported(action) {
+                return invalid("This action does not support undo.");
+            }
+            let input = data
+                .get("input")
+                .and_then(Value::as_object)
+                .ok_or_else(|| ServiceError::Invalid("input must be an object.".into()))?;
+            (action, input)
+        } else {
+            (action, data)
+        };
         if action == "recurrence.preview" {
             // Draft calendar previews are pure calculations: no connection,
             // transaction, revision change, or saved task is required.
@@ -305,13 +325,19 @@ impl TaskService {
             return Ok(result);
         }
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let previous = if history::records_action(action) {
+        let undo_before = if recording {
+            Some(undo::capture(&tx)?)
+        } else {
+            None
+        };
+        let previous = if history::records_action(action) || action == "undo.apply" {
             Some(history::capture(&tx)?)
         } else {
             None
         };
         let result =
             match action {
+                "undo.apply" => undo::apply(&tx, data)?,
                 "tasks.create" => create_task(&tx, data)?,
                 "tasks.update" => update_task(&tx, data)?,
                 "tasks.complete" => extensions::complete(&tx, data)?,
@@ -378,6 +404,12 @@ impl TaskService {
         {
             tx.execute("UPDATE metadata SET value=value+1 WHERE key='revision'", [])?;
         }
+        let result = if let Some(before) = undo_before {
+            let receipt = undo::record(&tx, before)?;
+            json!({"result":result,"undo_token":receipt["token"],"changed":receipt["changed"]})
+        } else {
+            result
+        };
         tx.commit()?;
         Ok(result)
     }

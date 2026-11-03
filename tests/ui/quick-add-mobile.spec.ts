@@ -30,7 +30,9 @@ test("compact mobile Quick Add keeps touch metadata and IME input as a draft unt
   page.on("request", (request) => {
     if (request.method() !== "POST" || !request.url().endsWith("/__tasks"))
       return;
-    const input = request.postDataJSON();
+    const envelope = request.postDataJSON();
+    const input =
+      envelope?.action === "undo.execute" ? envelope.input : envelope;
     if (input?.action === "tasks.create") creations.push(input.input?.title);
   });
 

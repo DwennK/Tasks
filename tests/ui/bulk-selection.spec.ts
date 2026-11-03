@@ -126,7 +126,9 @@ test("bulk duplication of a selected parent and child clones the subtree only on
     await selectParentAndChild(page, parent, child);
     const duplication = page.waitForResponse((response) => {
       if (!response.url().endsWith("/__tasks")) return false;
-      const request = response.request().postDataJSON();
+      const envelope = response.request().postDataJSON();
+      const request =
+        envelope?.action === "undo.execute" ? envelope.input : envelope;
       return (
         request?.action === "tasks.duplicate" && request.input.id === parent.id
       );
@@ -138,7 +140,7 @@ test("bulk duplication of a selected parent and child clones the subtree only on
       .click();
     const response = await duplication;
     expect(response.ok()).toBe(true);
-    const duplicated = (await response.json()) as Task;
+    const duplicated = (await response.json()).result as Task;
     // networkidle alone may already be satisfied before the async action
     // starts. First observe the real mutation and its selected clone.
     await expect(

@@ -75,6 +75,39 @@ const state = reactive({
   >,
 });
 let operation = Promise.resolve<unknown>(undefined);
+const undoStack: string[][] = [];
+let undoOperation = Promise.resolve();
+const undoableActions = new Set([
+  "tasks.create",
+  "tasks.update",
+  "tasks.complete",
+  "tasks.delete",
+  "tasks.restore",
+  "tasks.reorder",
+  "tasks.tags",
+  "tasks.duplicate",
+  "tasks.wont_do",
+  "templates.apply",
+]);
+// Explicit groups keep one multi-selection/drag gesture on one undo step.
+function groupedMutate() {
+  const tokens: string[] = [];
+  return <T = unknown>(action: string, input: Record<string, unknown> = {}) =>
+    mutate<T>(action, input, tokens);
+}
+function undo() {
+  const next = undoOperation.then(async () => {
+    if (!(await flushAll())) return;
+    const tokens = undoStack.at(-1);
+    if (!tokens) return;
+    await enqueue("undo.apply", { tokens }, () => {
+      undoStack.pop();
+      state.error = "";
+    });
+  });
+  undoOperation = next.catch(() => undefined);
+  return next;
+}
 let settingSequence = 0;
 let writeFailures = 0;
 const optimisticSettings = new Map<
@@ -202,6 +235,8 @@ function enqueue<T = unknown>(
   input: Record<string, unknown> = {},
   onWritten?: () => void,
   preservedDraftIds?: ReadonlySet<string>,
+  undoGroup?: string[],
+  recordUndo = true,
 ): Promise<T> {
   state.busy++;
   const next = operation.then(async () => {
@@ -222,7 +257,26 @@ function enqueue<T = unknown>(
         ? { ...input, expected_version: before.version }
         : input;
     try {
-      const result = await dispatch<T>(action, request);
+      let result: T;
+      if (recordUndo && undoableActions.has(action)) {
+        const receipt = await dispatch<{
+          result: T;
+          undo_token: string | null;
+          changed: boolean;
+        }>("undo.execute", { action, input: request });
+        result = receipt.result;
+        if (receipt.undo_token) {
+          const tokens = undoGroup || [];
+          // Do not join across an interleaved independent user action.
+          if (undoStack.at(-1) !== tokens) {
+            undoStack.push(tokens.length ? [] : tokens);
+            if (undoStack.length > 50) undoStack.shift();
+          }
+          undoStack.at(-1)!.push(receipt.undo_token);
+        }
+      } else {
+        result = await dispatch<T>(action, request);
+      }
       onWritten?.();
       const saved =
         action.startsWith("tasks.") &&
@@ -287,6 +341,7 @@ function restoringTaskIds(id: string) {
 async function mutate<T = unknown>(
   action: string,
   input: Record<string, unknown> = {},
+  undoGroup?: string[],
 ): Promise<T> {
   if (action === "settings.set" && typeof input.key === "string") {
     const key = input.key;
@@ -332,7 +387,7 @@ async function mutate<T = unknown>(
         throw new Error("Save or retry your pending task changes first.");
       // Restore changes only lifecycle state. It must neither publish a held
       // title nor adopt a newer CLI version as an implicit conflict Retry.
-      return await enqueue<T>(action, input, undefined, preserved);
+      return await enqueue<T>(action, input, undefined, preserved, undoGroup);
     } finally {
       for (const id of preserved) {
         const remaining = (restoringDrafts.get(id) || 1) - 1;
@@ -371,7 +426,7 @@ async function mutate<T = unknown>(
     if (Object.values(state.drafts).some((d) => d.failed))
       throw new Error("Save or retry your pending task changes first.");
   }
-  return enqueue<T>(action, input);
+  return enqueue<T>(action, input, undefined, undefined, undoGroup);
 }
 function editTask(
   id: string,
@@ -430,17 +485,34 @@ async function flushTask(id: string): Promise<void> {
   }
   const work = (async () => {
     try {
-      const saved = await enqueue<Task>("tasks.update", {
-        id,
-        ...patch,
-        expected_version: draft.version,
-      });
-      const current = state.drafts[id];
-      if (current) {
-        for (const [key, value] of Object.entries(patch))
-          if (current.patch[key] === value) delete current.patch[key];
-        current.version = saved.version;
-        if (!Object.keys(current.patch).length) delete state.drafts[id];
+      // Save text separately from metadata so a tag/checklist undo never
+      // rolls back notes typed during the same debounce interval.
+      const textFields = new Set(["title", "notes", "notes_format"]);
+      const content = Object.fromEntries(
+        Object.entries(patch).filter(([key]) => textFields.has(key)),
+      );
+      const metadata = Object.fromEntries(
+        Object.entries(patch).filter(([key]) => !textFields.has(key)),
+      );
+      let version = draft.version;
+      for (const part of [content, metadata]) {
+        if (!Object.keys(part).length) continue;
+        const saved = await enqueue<Task>(
+          "tasks.update",
+          { id, ...part, expected_version: version },
+          undefined,
+          undefined,
+          undefined,
+          part === metadata,
+        );
+        version = saved.version;
+        const current = state.drafts[id];
+        if (current) {
+          for (const [key, value] of Object.entries(part))
+            if (current.patch[key] === value) delete current.patch[key];
+          current.version = saved.version;
+          if (!Object.keys(current.patch).length) delete state.drafts[id];
+        }
       }
     } catch {
       const current = state.drafts[id];
@@ -691,6 +763,8 @@ export function useTasks() {
     refresh,
     checkRevision,
     mutate,
+    groupedMutate,
+    undo,
     editTask,
     flushTask,
     flushAll,

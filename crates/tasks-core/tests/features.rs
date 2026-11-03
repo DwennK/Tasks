@@ -1117,7 +1117,7 @@ fn native_interface_and_dock_preferences_default_on_existing_databases_and_valid
     assert_eq!(
         conn.pragma_query_value::<i64, _>(None, "user_version", |r| r.get(0))
             .unwrap(),
-        9
+        10
     );
     for mode in ["none", "today", "inbox", "all", "overdue"] {
         setting(&service, "dock_count", json!(mode));

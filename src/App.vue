@@ -107,6 +107,7 @@ import {
   type View,
 } from "./composables/useTasks";
 import { parseTaskInput, defaultHotkeys, keyChord } from "./lib/task-input";
+import { undoTextInput, isTextInput } from "./lib/undo-input";
 import { captureTaskTitleFields } from "./composables/useTaskTitleField";
 const {
   state,
@@ -119,6 +120,8 @@ const {
   refresh,
   checkRevision,
   mutate,
+  groupedMutate,
+  undo,
   navigate,
   retryDrafts,
   flushAll,
@@ -966,6 +969,9 @@ onMounted(() => {
     void listen<string>("tasks-quit-cancelled", (event) => {
       resetQuit(event.payload || "Could not save pending changes.");
     }).then((u) => (disposed ? u() : (unlistenQuitCancelled = u)));
+    void listen<string>("tasks-command", (event) => {
+      void runCommand(event.payload);
+    }).then((u) => (disposed ? u() : (unlistenCommands = u)));
     void listen<string>("desktop-integration-error", (event) => {
       state.error = event.payload;
     }).then((u) => (disposed ? u() : (unlistenIntegrationError = u)));
@@ -1031,10 +1037,6 @@ onMounted(() => {
         if (urls) void handleDeepLinks(urls);
       })
       .catch((e) => (state.error = String(e)));
-
-    void listen<string>("tasks-command", (event) => {
-      void runCommand(event.payload);
-    }).then((u) => (disposed ? u() : (unlistenCommands = u)));
   }
 });
 onBeforeUnmount(() => {
@@ -1381,6 +1383,7 @@ function cancelAddBelow() {
   if (!addingBelow.value) addBelow.value = null;
 }
 async function createTaskBelow() {
+  const mutate = groupedMutate();
   const draft = addBelow.value;
   const title = draft?.title.trim();
   const anchor = draft && tasksById.value.get(draft.anchorId);
@@ -1524,6 +1527,7 @@ function toggleAllSubtasks() {
   };
 }
 async function postponeGroup(group: { tasks: Task[] }) {
+  const mutate = groupedMutate();
   if (postponing.value || quitting.value) return;
   captureTaskTitleFields(true);
   const today = localDate();
@@ -1736,6 +1740,7 @@ function taskContext(event: MouseEvent, task: Task) {
   context.value = { task, x: event.clientX, y: event.clientY };
 }
 async function taskAction(action: string, value?: unknown) {
+  const mutate = groupedMutate();
   captureTaskTitleFields(true);
   const task = context.value?.task || selected.value;
   if (!task) return;
@@ -1793,7 +1798,7 @@ async function taskAction(action: string, value?: unknown) {
         else
           await mutate("tasks.complete", { id, completed: !task.completed_at });
       }
-      if (action === "restore") await restore(id);
+      if (action === "restore") await mutate("tasks.restore", { id });
       if (action === "delete") await mutate("tasks.delete", { id });
       if (action === "wont_do")
         await mutate("tasks.wont_do", { id, wont_do: !task.wont_do_at });
@@ -1829,6 +1834,7 @@ async function taskAction(action: string, value?: unknown) {
   }
 }
 async function applyBulkDate(patch: Record<string, unknown>) {
+  const mutate = groupedMutate();
   if (!bulkDialog.value || bulkBusy.value) return;
   bulkBusy.value = true;
   bulkError.value = "";
@@ -1847,6 +1853,7 @@ async function applyBulkDate(patch: Record<string, unknown>) {
   }
 }
 async function applyBulkTags(changes: Record<string, boolean>) {
+  const mutate = groupedMutate();
   if (!bulkDialog.value || bulkBusy.value) return;
   bulkBusy.value = true;
   bulkError.value = "";
@@ -1871,6 +1878,7 @@ async function applyBulkTags(changes: Record<string, boolean>) {
   }
 }
 async function dropTask(event: DragEvent, target: Task) {
+  const mutate = groupedMutate();
   if (!canReorder.value) return;
   const finishWork = beginEditorWrite();
   let failure: unknown;
@@ -2184,7 +2192,13 @@ async function closeSettings() {
   else settingsOpen.value = false;
 }
 async function runCommand(id: string) {
+  const mutate = groupedMutate();
   if (quitting.value) return;
+  if (id === "undo") {
+    if (undoTextInput(document.activeElement)) return;
+    await undoTaskAction();
+    return;
+  }
   commandOpen.value = false;
   if (id === "quick_add") await openQuick();
   else if (id === "search") await search();
@@ -2263,6 +2277,23 @@ async function runCommand(id: string) {
     }
   }
 }
+async function undoTaskAction() {
+  if (
+    quitting.value ||
+    standaloneSettings ||
+    standaloneReminders ||
+    document.querySelector('[role="dialog"][aria-modal="true"]')
+  )
+    return;
+  try {
+    captureTaskTitleFields(true);
+    await waitForEditorWrites();
+    await undo();
+    editorRef.value?.reconcileEditorDrafts();
+  } catch (error) {
+    state.error = String(error);
+  }
+}
 let keySequence = "",
   keyTime = 0;
 function keyboard(event: KeyboardEvent) {
@@ -2295,6 +2326,17 @@ function keyboard(event: KeyboardEvent) {
     return;
   }
   if (modal) return;
+  if (
+    (event.metaKey || event.ctrlKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    event.key.toLowerCase() === "z"
+  ) {
+    if (isTextInput(target)) return;
+    event.preventDefault();
+    if (!event.repeat && !event.isComposing) void undoTaskAction();
+    return;
+  }
   if (
     event.key === "Enter" &&
     !event.isComposing &&

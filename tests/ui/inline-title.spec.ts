@@ -293,7 +293,9 @@ test("modifier title clicks keep multi-selection and IME Enter does not save or 
     page.on("request", (request) => {
       if (request.method() !== "POST" || !request.url().endsWith("/__tasks"))
         return;
-      const body = request.postDataJSON();
+      const envelope = request.postDataJSON();
+      const body =
+        envelope?.action === "undo.execute" ? envelope.input : envelope;
       if (["tasks.update", "tasks.create"].includes(body?.action))
         updates.push(body.action);
     });
@@ -434,7 +436,9 @@ test("inline concurrent editor conflicts during IME preserve the shared title dr
     page.on("request", (request) => {
       if (request.method() !== "POST" || !request.url().endsWith("/__tasks"))
         return;
-      const body = request.postDataJSON();
+      const envelope = request.postDataJSON();
+      const body =
+        envelope?.action === "undo.execute" ? envelope.input : envelope;
       if (body?.action === "tasks.update" && body.input?.id === task.id)
         attemptedUpdates.push(body.action);
     });

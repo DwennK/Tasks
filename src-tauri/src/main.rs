@@ -180,7 +180,7 @@ fn main() {
                     .about(Some(AboutMetadata { name: Some("Tasks".into()), version: Some(env!("CARGO_PKG_VERSION").into()), ..Default::default() }))
                     .separator().item(&command("check_updates", "Check for Updates…")?).item(&settings).separator().services().separator().hide().hide_others().show_all().separator().item(&quit).build()?)
                 .item(&file_menu)
-                .item(&SubmenuBuilder::new(app, "Edit").undo().redo().separator().cut().copy().paste().select_all().build()?)
+                .item(&SubmenuBuilder::new(app, "Edit").item(&MenuItem::with_id(app, "undo", "Undo", true, Some("CmdOrCtrl+Z"))?).redo().separator().cut().copy().paste().select_all().build()?)
                 .item(&list_menu.build()?)
                 .item(&task_menu.build()?)
                 .item(&SubmenuBuilder::new(app, "Window").minimize().maximize().fullscreen().separator().close_window().build()?)
@@ -189,6 +189,12 @@ fn main() {
         .on_menu_event(|app, event| {
             if event.id().as_ref() == "save-and-quit" {
                 quit::request(app);
+            } else if event.id().as_ref() == "undo" && !quit::is_pending(app) {
+                // Route to the focused webview so text undo in Settings never
+                // changes a task in the main window.
+                if let Some(window) = app.webview_windows().values().find(|window| window.is_focused().unwrap_or(false)) {
+                    let _ = window.emit("tasks-command", "undo");
+                }
             } else if !quit::is_pending(app) {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
